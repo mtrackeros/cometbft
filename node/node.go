@@ -393,7 +393,7 @@ func NewNodeWithCliParams(ctx context.Context,
 	localAddr := pubKey.Address()
 
 	// Determine whether we should attempt state sync.
-	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(state, localAddr)
+	stateSync := config.StateSync.Enable && !state.Validators.ValidatorBlocksTheChain(localAddr)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -402,8 +402,13 @@ func NewNodeWithCliParams(ctx context.Context,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync CometBFT with the app.
 	consensusLogger := logger.With("module", "consensus")
+
+	appInfoResponse, err := proxyApp.Query().Info(ctx, proxy.InfoRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error calling ABCI Info method: %v", err)
+	}
 	if !stateSync {
-		if err := doHandshake(ctx, stateStore, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
+		if err := doHandshake(ctx, stateStore, state, blockStore, genDoc, eventBus, appInfoResponse, proxyApp, consensusLogger); err != nil {
 			return nil, err
 		}
 
@@ -416,14 +421,12 @@ func NewNodeWithCliParams(ctx context.Context,
 		}
 	}
 
-	// Determine whether we should do block sync. This must happen after the handshake, since the
-	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := !onlyValidatorIsUs(state, localAddr)
-	waitSync := stateSync || blockSync
-
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
-	mempool, mempoolReactor := createMempoolAndMempoolReactor(config, proxyApp, state, eventBus, waitSync, memplMetrics, logger)
+	// Blocksync is always active, except if the local node blocks the chain
+	waitSync := !state.Validators.ValidatorBlocksTheChain(localAddr)
+
+	mempool, mempoolReactor := createMempoolAndMempoolReactor(config, proxyApp, state, eventBus, waitSync, memplMetrics, logger, appInfoResponse)
 
 	evidenceReactor, evidencePool, err := createEvidenceReactor(config, dbProvider, stateStore, blockStore, logger)
 	if err != nil {
@@ -462,8 +465,9 @@ func NewNodeWithCliParams(ctx context.Context,
 			panic(fmt.Sprintf("failed to retrieve statesynced height from store %s; expected state store height to be %v", err, state.LastBlockHeight))
 		}
 	}
-	// Don't start block sync if we're doing a state sync first.
-	bcReactor, err := createBlocksyncReactor(config, state, blockExec, blockStore, blockSync && !stateSync, localAddr, logger, bsMetrics, offlineStateSyncHeight)
+	// Don't start block sync if we're doing a state sync first, or we are blocking the chain.
+	blockSync := !stateSync && !state.Validators.ValidatorBlocksTheChain(localAddr)
+	bcReactor, err := createBlocksyncReactor(config, state, blockExec, blockStore, blockSync, localAddr, logger, bsMetrics, offlineStateSyncHeight)
 	if err != nil {
 		return nil, ErrCreateBlockSyncReactor{Err: err}
 	}

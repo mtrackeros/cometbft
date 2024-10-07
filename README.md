@@ -59,6 +59,14 @@ in order of preference:
 
 More on how releases are conducted can be found [here](./RELEASES.md).
 
+## Support Policy
+
+CometBFT aligns with other components of the [Interchain Stack](https://interchain.io/)
+and we offer long-term support (LTS) guarantees for certain releases. The
+complete End of Life (EOL) schedule, LTS plans, and the general support policy is
+in documented and regularly updated in the
+discussion [Support policy for CometBFT releases #590](https://github.com/cometbft/cometbft/discussions/590).
+
 ## Security
 
 Please see [SECURITY.md](./SECURITY.md).
@@ -67,11 +75,11 @@ Please see [SECURITY.md](./SECURITY.md).
 
 | CometBFT version | Requirement | Version        | Tested with  |
 |------------------|-------------|----------------|--------------|
-| main             | Go version  | 1.22 or higher | up to 1.22.5 |
-| v1.x             | Go version  | 1.22 or higher | up to 1.22   |
-| v0.38.x          | Go version  | 1.21 or higher | up to 1.22   |
-| v0.37.x          | Go version  | 1.20 or higher | up to 1.22   |
-| v0.34.x          | Go version  | 1.20 or higher | up to 1.20   |
+| main             | Go version  | 1.23 or higher | up to 1.23.1 |
+| v1.x             | Go version  | 1.23 or higher | up to 1.23.1 |
+| v0.38.x          | Go version  | 1.22 or higher | up to 1.22   |
+| v0.37.x          | Go version  | 1.22 or higher | up to 1.22   |
+| v0.34.x          | Go version  | 1.22 or higher | up to 1.22   |
 
 ### Install
 
